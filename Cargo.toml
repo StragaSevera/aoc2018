@@ -11,3 +11,5 @@ lazy_static = "1.4.0"
 
 [dev-dependencies]
 test-case = "1.2.0"
+#assert2 = "0.3.6"
+pretty_assertions = "1.0.0"
