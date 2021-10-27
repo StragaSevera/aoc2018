@@ -1,3 +1,10 @@
+use std::collections::HashMap;
+use std::ops::Range;
+use chrono::{Duration, NaiveDateTime, Timelike};
+use event::Event;
+use event::State;
+// use lazy_static::lazy_static;
+
 mod event;
 
 fn main() {
@@ -6,8 +13,68 @@ fn main() {
     println!("{}", result)
 }
 
-fn calculate(_input: impl Iterator<Item=String>) -> u32 {
-    todo!()
+
+fn calculate(input: impl Iterator<Item=String>) -> u32 {
+    let mut events: Vec<Event> = input.map(|s| Event::new(&s)).collect();
+    events.sort_unstable_by_key(|e| e.datetime);
+    let guards = build_guards(events);
+
+    let sleepy_guard_index = guards.iter().max_by_key(|(_, v)| {
+        v.iter().map(|e| e.end - e.start + 1).sum::<u32>()
+    }).unwrap().0;
+    let sleepy_guard = &guards[sleepy_guard_index];
+
+    let sleepy_minute = (0u32..60).map(|i| {
+        sleepy_guard.iter().filter(|e| e.contains(&i)).count()
+    }).enumerate().max_by_key(|e| e.1).unwrap().0 as u32;
+
+    sleepy_guard_index * sleepy_minute
+}
+
+fn build_guards(events: Vec<Event>) -> HashMap<u32, Vec<Range<u32>>> {
+    let mut guards: HashMap<u32, Vec<Range<u32>>> = HashMap::new();
+    let mut current_guard: Option<u32> = None;
+    let mut asleep_event: Option<Event> = None;
+
+    for event in events {
+        if let State::GuardShift(guard) = event.state {
+            current_guard = Some(guard);
+            guards.entry(guard).or_insert_with(Vec::new);
+            asleep_event = None;
+        } else if let Some(guard) = current_guard {
+            match &asleep_event {
+                None => {
+                    if event.state == State::FallAsleep { asleep_event = Some(event); }
+                }
+                Some(unwrapped_event) => {
+                    if event.state == State::WakeUp {
+                        let (sleep_start, sleep_end) = build_sleep_bounds(event, &unwrapped_event);
+                        guards.get_mut(&guard).unwrap().push(
+                            sleep_start.minute()..sleep_end.minute());
+                        asleep_event = None
+                    }
+                }
+            }
+        }
+    }
+
+    guards
+}
+
+fn build_sleep_bounds(event: Event, asleep_event: &&Event) -> (NaiveDateTime, NaiveDateTime) {
+    let midnight = hour_for_date(&asleep_event.datetime, 0);
+    let one_am = hour_for_date(&asleep_event.datetime, 1);
+    let sleep_start = asleep_event.datetime.clamp(midnight, one_am);
+    let sleep_end = event.datetime.clamp(midnight, one_am);
+    (sleep_start, sleep_end)
+}
+
+fn hour_for_date(datetime: &NaiveDateTime, hour: u32) -> NaiveDateTime {
+    if datetime.hour() < 12 {
+        (datetime.date()).and_hms(hour, 0, 0)
+    } else {
+        (datetime.date() + Duration::days(1)).and_hms(hour, 0, 0)
+    }
 }
 
 #[cfg(test)]

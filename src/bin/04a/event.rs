@@ -3,13 +3,13 @@ use regex::{Captures, Regex};
 use lazy_static::lazy_static;
 
 #[derive(Eq, PartialEq, Debug)]
-struct Event {
-    pub time: NaiveDateTime,
-    pub content: EventContent,
+pub struct Event {
+    pub datetime: NaiveDateTime,
+    pub state: State,
 }
 
 #[derive(Eq, PartialEq, Debug)]
-enum EventContent {
+pub enum State {
     GuardShift(u32),
     FallAsleep,
     WakeUp,
@@ -41,7 +41,7 @@ r"(?xm)^
         let caps = EVENT_REGEX.captures(s).unwrap();
         let time = Self::build_time(&caps["time"]);
         let content = Self::build_content(caps);
-        Self { time, content }
+        Self { datetime: time, state: content }
     }
 
     fn build_time(s: &str) -> NaiveDateTime {
@@ -49,13 +49,13 @@ r"(?xm)^
     }
 
 
-    fn build_content(caps: Captures) -> EventContent {
+    fn build_content(caps: Captures) -> State {
         if let Some(id) = caps.name("id") {
-            EventContent::GuardShift(id.as_str().parse().unwrap())
+            State::GuardShift(id.as_str().parse().unwrap())
         } else if let Some(_) = caps.name("sleep") {
-            EventContent::FallAsleep
+            State::FallAsleep
         } else if let Some(_) = caps.name("wake") {
-            EventContent::WakeUp
+            State::WakeUp
         } else {
             panic!("Wrong string format!")
         }
@@ -74,8 +74,8 @@ mod tests {
     fn from_str_correct_guard_test() {
         let result = Event::new(CORRECT_GUARD_INPUT);
         let expected = Event {
-            time: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 0, 0),
-            content: EventContent::GuardShift(10),
+            datetime: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 0, 0),
+            state: State::GuardShift(10),
         };
         assert_eq!(result, expected);
     }
@@ -86,8 +86,8 @@ mod tests {
     fn from_str_correct_sleep_test() {
         let result = Event::new(CORRECT_SLEEP_INPUT);
         let expected = Event {
-            time: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 5, 0),
-            content: EventContent::FallAsleep,
+            datetime: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 5, 0),
+            state: State::FallAsleep,
         };
         assert_eq!(result, expected);
     }
@@ -98,8 +98,8 @@ mod tests {
     fn from_str_correct_wake_test() {
         let result = Event::new(CORRECT_WAKE_INPUT);
         let expected = Event {
-            time: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 25, 0),
-            content: EventContent::WakeUp,
+            datetime: NaiveDate::from_ymd(1518, 11, 1).and_hms(0, 25, 0),
+            state: State::WakeUp,
         };
         assert_eq!(result, expected);
     }
