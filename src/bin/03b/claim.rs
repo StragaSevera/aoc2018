@@ -3,16 +3,13 @@ use std::{
     error,
     str::FromStr,
 };
-use std::cmp::{max, min};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use ClaimError::{FormatError};
 
-type Square = (u32, u32);
-
 #[derive(PartialEq, Eq, Debug)]
 pub struct Claim {
-    id: u32,
+    pub(crate) id: u32,
     x1: u32,
     y1: u32,
     x2: u32,
@@ -53,39 +50,9 @@ impl Claim {
         }
     }
 
-    fn intersects_with(&self, other: &Claim) -> bool {
+    pub fn intersects_with(&self, other: &Claim) -> bool {
         !((self.x1 > other.x2) || (other.x1 > self.x2) ||
             (self.y1 > other.y2) || (other.y1 > self.y2))
-    }
-
-    pub fn intersection(&self, other: &Claim) -> Option<Claim> {
-        if self.intersects_with(other) {
-            Some(Self {
-                id: 0,
-                x1: max(self.x1, other.x1),
-                y1: max(self.y1, other.y1),
-                x2: min(self.x2, other.x2),
-                y2: min(self.y2, other.y2),
-            })
-        } else {
-            None
-        }
-    }
-
-    fn area(&self) -> u32 {
-        let width = self.x2 - self.x1 + 1;
-        let height = self.y2 - self.y1 + 1;
-        width * height
-    }
-
-    pub fn squares(&self) -> Vec<Square> {
-        let mut result = Vec::with_capacity(self.area() as usize);
-        for i in self.x1..=self.x2 {
-            for j in self.y1..=self.y2 {
-                result.push((i, j));
-            }
-        }
-        result
     }
 }
 
@@ -157,52 +124,5 @@ mod tests {
         let a = Claim::new(a);
         let b = Claim::new(b);
         pretty_assertions::assert_eq!(a.intersects_with(&b), result);
-    }
-
-    #[test]
-    fn intersection_some_test() {
-        let a = Claim::new(INTERSECTION_SOME.0);
-        let b = Claim::new(INTERSECTION_SOME.1);
-        let result = a.intersection(&b);
-
-        let expected = Some(Claim {
-            id: 0,
-            x1: 3,
-            y1: 3,
-            x2: 4,
-            y2: 4,
-        });
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn intersection_none_test() {
-        let a = Claim::new(INTERSECTION_NONE.0);
-        let b = Claim::new(INTERSECTION_NONE.1);
-        let result = a.intersection(&b);
-
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn area_test() {
-        let claim = Claim::new(CORRECT_INPUT);
-        let result = claim.area();
-
-        assert_eq!(result, 20)
-    }
-
-    const SQUARES_INPUT: &str = "#1 @ 2,3: 2x3";
-    const SQUARES_RESULT: [Square; 6] = [
-        (2, 3), (2, 4), (2, 5), (3, 3), (3, 4), (3, 5)
-    ];
-
-
-    #[test]
-    fn squares_test() {
-        let claim = Claim::new(SQUARES_INPUT);
-        let result = claim.squares();
-
-        assert_eq!(result, SQUARES_RESULT);
     }
 }
